@@ -1,28 +1,32 @@
 import asyncio
-import json
-import os
 import logging
+import os
 from pathlib import Path
-from typing import List, Optional, Dict, Any, Set
-import dataclasses
+from typing import Any
 
 from fastmcp import FastMCP, settings
-from repomap_class import RepoMap
-from utils import count_tokens, read_text
-from scm import get_scm_fname
-from importance import filter_important_files
+
+from .repomap_class import RepoMap
+from .utils import count_tokens, read_text
+
 
 # Helper function from your CLI, useful to have here
-def find_src_files(directory: str) -> List[str]:
+def find_src_files(directory: str) -> list[str]:
     if not os.path.isdir(directory):
         return [directory] if os.path.isfile(directory) else []
     src_files = []
     for r, d, f_list in os.walk(directory):
-        d[:] = [d_name for d_name in d if not d_name.startswith('.') and d_name not in {'node_modules', '__pycache__', 'venv', 'env'}]
+        d[:] = [
+            d_name
+            for d_name in d
+            if not d_name.startswith(".")
+            and d_name not in {"node_modules", "__pycache__", "venv", "env"}
+        ]
         for f in f_list:
-            if not f.startswith('.'):
+            if not f.startswith("."):
                 src_files.append(os.path.join(r, f))
     return src_files
+
 
 # Configure logging - only show errors
 root_logger = logging.getLogger()
@@ -31,15 +35,17 @@ root_logger.setLevel(logging.ERROR)
 # Create console handler for errors only
 console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.ERROR)
-console_formatter = logging.Formatter('%(levelname)-5s %(asctime)-15s %(name)s:%(funcName)s:%(lineno)d - %(message)s')
+console_formatter = logging.Formatter(
+    "%(levelname)-5s %(asctime)-15s %(name)s:%(funcName)s:%(lineno)d - %(message)s"
+)
 console_handler.setFormatter(console_formatter)
 root_logger.addHandler(console_handler)
 
 # Suppress FastMCP logs
-fastmcp_logger = logging.getLogger('fastmcp')
+fastmcp_logger = logging.getLogger("fastmcp")
 fastmcp_logger.setLevel(logging.ERROR)
 # Suppress server startup message
-server_logger = logging.getLogger('fastmcp.server')
+server_logger = logging.getLogger("fastmcp.server")
 server_logger.setLevel(logging.ERROR)
 
 log = logging.getLogger(__name__)
@@ -50,19 +56,20 @@ settings.stateless_http = True
 # Create MCP server
 mcp = FastMCP("RepoMapServer")
 
+
 @mcp.tool()
 async def repo_map(
     project_root: str,
-    chat_files: Optional[List[str]] = None,
-    other_files: Optional[List[str]] = None,
+    chat_files: list[str] | None = None,
+    other_files: list[str] | None = None,
     token_limit: Any = 8192,  # Accept any type to handle empty strings
     exclude_unranked: bool = False,
     force_refresh: bool = False,
-    mentioned_files: Optional[List[str]] = None,
-    mentioned_idents: Optional[List[str]] = None,
+    mentioned_files: list[str] | None = None,
+    mentioned_idents: list[str] | None = None,
     verbose: bool = False,
-    max_context_window: Optional[int] = None,
-) -> Dict[str, Any]:
+    max_context_window: int | None = None,
+) -> dict[str, Any]:
     """Generate a repository map for the specified files, providing a list of function prototypes and variables for files as well as relevant related
     files. Provide filenames relative to the project_root. In addition to the files provided, relevant related files will also be included with a
     very small ranking boost.
@@ -96,11 +103,11 @@ async def repo_map(
         token_limit = int(token_limit) if token_limit else 8192
     except (TypeError, ValueError):
         token_limit = 8192
-    
+
     # Ensure token_limit is positive
     if token_limit <= 0:
         token_limit = 8192
-    
+
     chat_files_list = chat_files or []
     mentioned_fnames_set = set(mentioned_files) if mentioned_files else None
     mentioned_idents_set = set(mentioned_idents) if mentioned_idents else None
@@ -127,7 +134,7 @@ async def repo_map(
     root_path = Path(project_root).resolve()
     abs_chat_files = [str(root_path / f) for f in chat_files_list]
     abs_other_files = [str(root_path / f) for f in effective_other_files]
-    
+
     # Remove any chat files from the other_files list to avoid duplication
     abs_chat_files_set = set(abs_chat_files)
     abs_other_files = [f for f in abs_other_files if f not in abs_chat_files_set]
@@ -139,10 +146,10 @@ async def repo_map(
             root=str(root_path),
             token_counter_func=lambda text: count_tokens(text, "gpt-4"),
             file_reader_func=read_text,
-            output_handler_funcs={'info': log.info, 'warning': log.warning, 'error': log.error},
+            output_handler_funcs={"info": log.info, "warning": log.warning, "error": log.error},
             verbose=verbose,
             exclude_unranked=exclude_unranked,
-            max_context_window=max_context_window
+            max_context_window=max_context_window,
         )
     except Exception as e:
         log.exception(f"Failed to initialize RepoMap for project '{project_root}': {e}")
@@ -155,25 +162,26 @@ async def repo_map(
             other_files=abs_other_files,
             mentioned_fnames=mentioned_fnames_set,
             mentioned_idents=mentioned_idents_set,
-            force_refresh=force_refresh
+            force_refresh=force_refresh,
         )
-        
+
         # Convert FileReport to dictionary for JSON serialization
         report_dict = {
             "excluded": file_report.excluded,
             "definition_matches": file_report.definition_matches,
             "reference_matches": file_report.reference_matches,
-            "total_files_considered": file_report.total_files_considered
+            "total_files_considered": file_report.total_files_considered,
         }
-        
+
         return {
             "map": map_content or "No repository map could be generated.",
-            "report": report_dict
+            "report": report_dict,
         }
     except Exception as e:
         log.exception(f"Error generating repository map for project '{project_root}': {e}")
         return {"error": f"Error generating repository map: {str(e)}"}
-    
+
+
 @mcp.tool()
 async def search_identifiers(
     project_root: str,
@@ -181,10 +189,10 @@ async def search_identifiers(
     max_results: int = 50,
     context_lines: int = 2,
     include_definitions: bool = True,
-    include_references: bool = True
-) -> Dict[str, Any]:
+    include_references: bool = True,
+) -> dict[str, Any]:
     """Search for identifiers in code files. Get back a list of matching identifiers with their file, line number, and context.
-       When searching, just use the identifier name without any special characters, prefixes or suffixes. The search is 
+       When searching, just use the identifier name without any special characters, prefixes or suffixes. The search is
        case-insensitive.
 
     Args:
@@ -194,7 +202,7 @@ async def search_identifiers(
         context_lines: Number of lines of context to show
         include_definitions: Whether to include definition occurrences
         include_references: Whether to include reference occurrences
-    
+
     Returns:
         Dictionary containing search results or error message
     """
@@ -207,14 +215,14 @@ async def search_identifiers(
             root=project_root,
             token_counter_func=lambda text: count_tokens(text, "gpt-4"),
             file_reader_func=read_text,
-            output_handler_funcs={'info': log.info, 'warning': log.warning, 'error': log.error},
+            output_handler_funcs={"info": log.info, "warning": log.warning, "error": log.error},
             verbose=False,
-            exclude_unranked=True
+            exclude_unranked=True,
         )
 
         # Find all source files in the project
         all_files = find_src_files(project_root)
-        
+
         # Get all tags (definitions and references) for all files
         all_tags = []
         for file_path in all_files:
@@ -225,11 +233,12 @@ async def search_identifiers(
         # Filter tags based on search query and options
         matching_tags = []
         query_lower = query.lower()
-        
+
         for tag in all_tags:
             if query_lower in tag.name.lower():
-                if (tag.kind == "def" and include_definitions) or \
-                   (tag.kind == "ref" and include_references):
+                if (tag.kind == "def" and include_definitions) or (
+                    tag.kind == "ref" and include_references
+                ):
                     matching_tags.append(tag)
 
         # Sort by relevance (definitions first, then references)
@@ -242,38 +251,38 @@ async def search_identifiers(
         results = []
         for tag in matching_tags:
             file_path = str(Path(project_root) / tag.rel_fname)
-            
+
             # Calculate context range based on context_lines parameter
             start_line = max(1, tag.line - context_lines)
             end_line = tag.line + context_lines
             context_range = list(range(start_line, end_line + 1))
-            
-            context = repo_map.render_tree(
-                file_path,
-                tag.rel_fname,
-                context_range
-            )
-            
+
+            context = repo_map.render_tree(file_path, tag.rel_fname, context_range)
+
             if context:
-                results.append({
-                    "file": tag.rel_fname,
-                    "line": tag.line,
-                    "name": tag.name,
-                    "kind": tag.kind,
-                    "context": context
-                })
+                results.append(
+                    {
+                        "file": tag.rel_fname,
+                        "line": tag.line,
+                        "name": tag.name,
+                        "kind": tag.kind,
+                        "context": context,
+                    }
+                )
 
         return {"results": results}
 
     except Exception as e:
         log.exception(f"Error searching identifiers in project '{project_root}': {e}")
-        return {"error": f"Error searching identifiers: {str(e)}"}    
+        return {"error": f"Error searching identifiers: {str(e)}"}
+
 
 # --- Main Entry Point ---
 def main():
     # Run the MCP server
     log.debug("Starting FastMCP server...")
     mcp.run()
+
 
 if __name__ == "__main__":
     main()

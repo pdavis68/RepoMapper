@@ -1,23 +1,55 @@
 [build-system]
-requires = ["setuptools>=69.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "repomapper"
-version = "0.1.0"
-requires-python = ">=3.13"
+version = "0.1.1"
+requires-python = ">=3.11"
 dependencies = [
     "diskcache>=5.6.0",
     "fastmcp>=2.11.3",
     "grep-ast>=0.3.0",
     "networkx>=3.0",
     "pygments>=2.14.0",
+    "scipy>=1.17.0",
     "tiktoken>=0.5.0",
     "tree-sitter>=0.20.0",
 ]
 
 [project.scripts]
-repomap-mcp = "repomap_server:main"
+repomapper = "repomapper.repomap:main"
+repomap-mcp = "repomapper.repomap_server:main"
 
-[tool.setuptools]
-py-modules = ["repomap_server", "repomap", "repomap_class", "utils", "importance", "scm"]
+[tool.hatch.build.targets.wheel]
+packages = ["src/repomapper"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "I",    # isort
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "E402",   # module level import not at top of file
+    "E731",   # do not assign a lambda expression, use a def
+    "W191",   # indentation contains tabs
+    "E111",   # indentation is not a multiple of four
+    "E114",   # indentation is not a multiple of four (comment)
+    "E117",   # over-indented
+    "D206",   # indent with spaces
+    "D300",   # use triple quotes
+    "Q000",   # single quotes found but double quotes preferred
+    "Q001",   # single quote multiline found but double quotes preferred
+    "Q002",   # single quote docstring found but double quotes preferred
+    "Q003",   # avoidable escaped quote
+    "COM812", # missing trailing comma
+    "COM819", # prohibited trailing comma
+    "ISC002", # multi-line implicit string concatenation
+]

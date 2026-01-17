@@ -41,7 +41,7 @@ I then used a combination of Aider w/Claude 3.7, Cline w/Gemini 2.5 Pro Preview 
 ## Example Output
 
 ```
-> python repomap.py . --chat-files repomap_class.py
+> uv run repomapper . --chat-files repomap_class.py
 Chat files: ['/mnt/programming/RepoMapper/repomap_class.py']
 repomap_class.py:
 (Rank value: 10.8111)
@@ -94,7 +94,11 @@ importance.py:
 ## Installation
 
 ```bash
-pip install -r requirements.txt
+# Install with uv (recommended)
+uv sync
+
+# Or install as editable package
+uv pip install -e .
 ```
 
 ----------
@@ -105,34 +109,34 @@ pip install -r requirements.txt
 
 ```bash
 # Map current directory
-python repomap.py .
+uv run repomapper .
 
 # Map specific directory with custom token limit
-python repomap.py src/ --map-tokens 2048
+uv run repomapper src/ --map-tokens 2048
 
 # Map specific files
-python repomap.py file1.py file2.py
+uv run repomapper file1.py file2.py
 
 # Specify chat files (higher priority) vs other files
-python repomap.py --chat-files main.py --other-files src/
+uv run repomapper --chat-files main.py --other-files src/
 
 # Specify mentioned files and identifiers
-python repomap.py --mentioned-files config.py --mentioned-idents "main_function"
+uv run repomapper --mentioned-files config.py --mentioned-idents "main_function"
 
 # Enable verbose output
-python repomap.py . --verbose
+uv run repomapper . --verbose
 
 # Force refresh of caches
-python repomap.py . --force-refresh
+uv run repomapper . --force-refresh
 
 # Specify model for token counting
-python repomap.py . --model gpt-3.5-turbo
+uv run repomapper . --model gpt-3.5-turbo
 
 # Set maximum context window
-python repomap.py . --max-context-window 8192
+uv run repomapper . --max-context-window 8192
 
 # Exclude files with Page Rank 0
-python repomap.py . --exclude-unranked
+uv run repomapper . --exclude-unranked
 ```
 
 The tool prioritizes files in the following order:
@@ -145,22 +149,22 @@ The tool prioritizes files in the following order:
 
 ```bash
 # Enable verbose output
-python repomap.py . --verbose
+uv run repomapper . --verbose
 
 # Force refresh of caches
-python repomap.py . --force-refresh
+uv run repomapper . --force-refresh
 
 # Specify model for token counting
-python repomap.py . --model gpt-3.5-turbo
+uv run repomapper . --model gpt-3.5-turbo
 
 # Set maximum context window
-python repomap.py . --max-context-window 8192
+uv run repomapper . --max-context-window 8192
 
 # Exclude files with Page Rank 0
-python repomap.py . --exclude-unranked
+uv run repomapper . --exclude-unranked
 
 # Mention specific files or identifiers for higher priority
-python repomap.py . --mentioned-files config.py --mentioned-idents "main_function"
+uv run repomapper . --mentioned-files config.py --mentioned-idents "main_function"
 ```
 
 ----------
@@ -271,23 +275,26 @@ RepoMap can also be run as an MCP (Model Context Protocol) server, allowing othe
       "disabled": false,
       "timeout": 60,
       "type": "stdio",
-      "command": "/usr/bin/python3",
+      "command": "uv",
       "args": [
-        "/absolute/path/to/repomap_server.py"
+        "run",
+        "--directory",
+        "/absolute/path/to/RepoMapper",
+        "repomap-mcp"
       ]
     }
   }
 }
 ```
 
-- Replace `"/absolute/path/to/repomap_server.py"` with the actual path to your `repomap_server.py` file.
+- Replace `"/absolute/path/to/RepoMapper"` with the actual path to your RepoMapper installation directory.
 
 ### Usage
 
-1. Run the `repomap_server.py` script:
+1. Run the MCP server:
 
 ```bash
-python repomap_server.py
+uv run repomap-mcp
 ```
 
 2. The server will start and listen for requests via STDIO.
